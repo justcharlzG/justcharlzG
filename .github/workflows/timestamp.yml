@@ -1,0 +1,57 @@
+name: Timestamp update
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/timestamp.yml"
+
+  schedule:
+    - cron: "*/5 * * * *"  # 每小时一次
+
+  workflow_dispatch: 
+
+permissions:
+  contents: write 
+
+jobs:
+  update_commit:
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true 
+          fetch-depth: 0 
+
+      - name: Update Timestamp File
+        run: |
+          current_time=$(date '+%Y-%m-%d %H:%M:%S')
+          echo "Updated on $current_time" > stamp.txt
+          echo "CURRENT_TIME=$current_time" >> $GITHUB_ENV
+
+      - name: Setup Git Configuration
+        run: |
+          git config user.email "justcharlzg@outlook.com"
+          git config user.name "justcharlzG"
+
+      - name: Prepare Commit
+        run: |
+          commit_messages=("Update: ⏰" "Refresh: 🔄" "Renew: 🌟")
+          random_msg=${commit_messages[$RANDOM % ${#commit_messages[@]}]}
+
+          git add stamp.txt
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+            exit 0
+          else
+            git commit -m "$random_msg - ${{ env.CURRENT_TIME }}"
+          fi
+
+      - name: Push Changes
+        if: success()  # 仅在 commit 成功时推送
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
